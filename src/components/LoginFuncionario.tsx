@@ -1,19 +1,45 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setTokens } from '../lib/api';
 import { Mail, Lock, LogIn, ShieldAlert } from 'lucide-react';
 
 export default function LoginFuncionario() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && senha) {
-      // Mock validation
-      console.log('Login efetuado', { email });
-      navigate('/funcionario/home');
+      setIsLoading(true);
+      setErro('');
+      try {
+        const response = await fetch('/api/v1/user/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ login: email, senha: senha })
+         });
+
+         if (!response.ok) {
+            throw new Error('E-mail ou senha incorretos.');
+         }
+
+         const data = await response.json();
+         // Save the tokens in localStorage
+         setTokens(data.access_token, data.refresh_token);
+         
+         // Temporary mock validation check - later can route depending on 'user.role'
+         console.log('Login efetuado', { email });
+         navigate('/funcionario/home');
+      } catch (err: any) {
+         setErro(err.message || 'Erro ao efetuar o login. Tente novamente mais tarde.');
+      } finally {
+         setIsLoading(false);
+      }
     } else {
       setErro('Por favor, preencha e-mail e senha.');
     }
@@ -81,11 +107,12 @@ export default function LoginFuncionario() {
             <div className="pt-2">
               <button 
                 type="submit"
-                className="w-full relative group overflow-hidden py-3.5 rounded-2xl bg-alta-green text-white font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_-6px_rgba(16,145,77,0.5)] hover:shadow-[0_12px_25px_-6px_rgba(16,145,77,0.6)] transform hover:-translate-y-0.5 transition-all duration-300"
+                disabled={isLoading}
+                className={`w-full relative group overflow-hidden py-3.5 rounded-2xl bg-alta-green text-white font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_-6px_rgba(16,145,77,0.5)] transform transition-all duration-300 ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5 hover:shadow-[0_12px_25px_-6px_rgba(16,145,77,0.6)]'}`}
               >
                 <span className="absolute w-0 h-0 transition-all duration-500 ease-out bg-white rounded-full group-hover:w-full group-hover:h-56 opacity-10"></span>
-                <span className="relative">Entrar no Sistema</span>
-                <LogIn className="w-5 h-5 relative" />
+                <span className="relative">{isLoading ? 'Autenticando...' : 'Entrar no Sistema'}</span>
+                {!isLoading && <LogIn className="w-5 h-5 relative" />}
               </button>
             </div>
           </form>

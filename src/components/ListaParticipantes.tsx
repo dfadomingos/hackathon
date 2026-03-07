@@ -1,12 +1,45 @@
-import { useState } from 'react';
-import { Search, Eye, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Eye, Filter, Loader2 } from 'lucide-react';
+import { fetchWithAuth } from '../lib/api';
 
-export default function ListaParticipantes({ data = [] }: { data: any[] }) {
+export default function ListaParticipantes() {
   const [categoriaFiltro, setCategoriaFiltro] = useState('Todas');
-  
-  const participantesFiltrados = data.filter(p => 
-    categoriaFiltro === 'Todas' ? true : p.categoria === categoriaFiltro
-  );
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [erro, setErro] = useState('');
+  const [busca, setBuscar] = useState('');
+
+  useEffect(() => {
+    const carregarUsuarios = async () => {
+      try {
+        const response = await fetchWithAuth('/api/v1/user/colaboradores');
+        if (!response.ok) {
+          throw new Error('Falha ao obter dados da API.');
+        }
+        const data = await response.json();
+        
+        // Filter out hugomendes@gmail.com (admin) and ensure array format
+        const usuariosArray = data.colaboradores || data.items || data.users || (Array.isArray(data) ? data : []);
+        const listaFiltrada = usuariosArray.filter((u: any) => u.login !== 'hugomendes@gmail.com');
+        
+        setUsuarios(listaFiltrada);
+      } catch (err: any) {
+        console.error('Erro ao carregar usuários:', err);
+        setErro(err.message || 'Não foi possível carregar a lista de participantes.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    carregarUsuarios();
+  }, []);
+
+  const participantesFiltrados = usuarios.filter(p => {
+    const matchCategoria = categoriaFiltro === 'Todas' || p.tipo === categoriaFiltro || p.funcao === categoriaFiltro;
+    const descBusca = busca.toLowerCase();
+    const matchBusca = p.nome?.toLowerCase().includes(descBusca) || p.login?.toLowerCase().includes(descBusca) || p.cpf?.includes(descBusca);
+    return matchCategoria && matchBusca;
+  });
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -18,6 +51,8 @@ export default function ListaParticipantes({ data = [] }: { data: any[] }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input 
               type="text" 
+              value={busca}
+              onChange={(e) => setBuscar(e.target.value)}
               placeholder="Buscar por nome, email ou CPF..." 
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-alta-green focus:border-alta-green outline-none transition-all"
             />
@@ -55,23 +90,41 @@ export default function ListaParticipantes({ data = [] }: { data: any[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {participantesFiltrados.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex justify-center items-center gap-2">
+                       <Loader2 className="w-5 h-5 animate-spin text-alta-green" />
+                       Carregando participantes...
+                    </div>
+                  </td>
+                </tr>
+              ) : erro ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-red-500 font-medium">
+                    {erro}
+                  </td>
+                </tr>
+              ) : participantesFiltrados.length > 0 ? (
                  participantesFiltrados.map((p) => (
-                  <tr key={p.id} className="hover:bg-alta-green/5 transition-colors group">
+                  <tr key={p.cpf || p.login} className="hover:bg-alta-green/5 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-gray-900">{p.nome}</div>
-                      <div className="text-sm text-gray-500">{p.email}</div>
+                      <div className="text-sm text-gray-500">{p.login}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex flex-col gap-1 items-start">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {p.categoria}
+                        {p.tipo || "Não definido"}
                       </span>
+                      {p.funcao && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-alta-green/10 text-alta-green">
+                          {p.funcao}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        p.status === 'Validado' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {p.status}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800`}>
+                        {p.empresa || 'Validado'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -84,7 +137,7 @@ export default function ListaParticipantes({ data = [] }: { data: any[] }) {
               ) : (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                    Nenhum participante encontrado nesta categoria.
+                    Nenhum participante encontrado nesta categoria ou termo de busca.
                   </td>
                 </tr>
               )}

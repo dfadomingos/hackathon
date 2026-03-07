@@ -25,6 +25,7 @@ export default function HomeAdmin() {
   
   // Navigation State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cadastro' | 'lista'>('dashboard');
+  const [isLoading, setIsLoading] = useState(false);
   
   // Participant List State (simulating a DB)
   const [listaPessoas, setListaPessoas] = useState<any[]>(INITIAL_MOCK_PARTICIPANTES);
@@ -57,27 +58,71 @@ export default function HomeAdmin() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Registro Funcionario:', formData);
+    setIsLoading(true);
     
-    const novoParticipante = {
-      id: Date.now(),
-      nome: formData.nome,
-      categoria: formData.tipoEmpresa, // Maps to "Comissão Organizadora" or "Colaborador Terceirizado"
-      email: formData.email,
-      status: 'Validado' // Auto-validate system admins/employees
-    };
+    try {
+      const response = await fetch('/api/v1/user/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nome: formData.nome,
+          login: formData.email,
+          senha: formData.senha,
+          cpf: formData.cpf,
+          funcao: formData.funcao === 'Outros' ? formData.outraFuncao : formData.funcao,
+          tipo: formData.tipoEmpresa,
+          ...(formData.tipoEmpresa === 'Colaborador Terceirizado' && { nome_empresa: formData.nomeEmpresa }),
+          ...(formData.tipoEmpresa === 'Colaborador Terceirizado' && { cnpj_empresa: formData.cnpj })
+        })
+      });
 
-    setListaPessoas(prev => [novoParticipante, ...prev]);
+      if (!response.ok) {
+        let errorMessage = 'Falha ao registrar colaborador na API.';
+        if (response.status === 404) {
+          errorMessage = 'Endpoint não encontrado. Se você acabou de aplicar a configuração do Vite, por favor pare o terminal e rode "npm run dev" de novo para o proxy funcionar.';
+        } else {
+          try {
+            const errorData = await response.json();
+            console.error("API Error Response:", errorData);
+            if (errorData.detail) {
+              errorMessage = typeof errorData.detail === 'string' ? errorData.detail : 'Dados inválidos. Verifique as informações.';
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch (e) {
+            console.error("Could not parse error response", e);
+          }
+        }
+        throw new Error(errorMessage);
+      }
 
-    alert('Funcionário/Colaborador cadastrado com sucesso!');
-    setFormData({
-      nome: '', cpf: '', email: '', senha: '', funcao: '', outraFuncao: '', tipoEmpresa: 'Comissão Organizadora', cnpj: '', nomeEmpresa: ''
-    });
-    
-    // Optional: Switch to list view so admin can see who they just added
-    setActiveTab('lista');
+      alert('Funcionário/Colaborador cadastrado com sucesso!');
+      
+      const novoParticipante = {
+        id: Date.now(),
+        nome: formData.nome,
+        categoria: formData.tipoEmpresa, 
+        email: formData.email,
+        status: 'Validado' 
+      };
+
+      setListaPessoas(prev => [novoParticipante, ...prev]);
+
+      setFormData({
+        nome: '', cpf: '', email: '', senha: '', funcao: '', outraFuncao: '', tipoEmpresa: 'Comissão Organizadora', cnpj: '', nomeEmpresa: ''
+      });
+      
+      setActiveTab('lista');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao realizar o cadastro. Tente novamente mais tarde.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // The original form abstracted into a sub-render
@@ -219,13 +264,16 @@ export default function HomeAdmin() {
         <div className="pt-8 border-t border-gray-100 flex justify-end">
            <button 
               type="submit"
-              className="relative group overflow-hidden pl-6 pr-4 py-3 rounded-xl bg-gray-900 text-white font-semibold flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              disabled={isLoading}
+              className={`relative group overflow-hidden pl-6 pr-4 py-3 rounded-xl bg-gray-900 text-white font-semibold flex items-center gap-3 shadow-lg hover:shadow-xl transform transition-all duration-300 ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
             >
               <span className="absolute w-0 h-0 transition-all duration-500 ease-out bg-white rounded-full group-hover:w-56 group-hover:h-56 opacity-10"></span>
-              <span className="relative">Cadastrar Colaborador</span>
-              <div className="relative bg-gray-700/50 rounded-lg p-1.5 transition-transform duration-300 group-hover:translate-x-1">
-                <ChevronRight className="w-4 h-4" />
-              </div>
+              <span className="relative">{isLoading ? 'Cadastrando...' : 'Cadastrar Colaborador'}</span>
+              {!isLoading && (
+                <div className="relative bg-gray-700/50 rounded-lg p-1.5 transition-transform duration-300 group-hover:translate-x-1">
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              )}
             </button>
         </div>
       </form>
@@ -319,7 +367,7 @@ export default function HomeAdmin() {
         {/* Render Tab Content */}
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && <DashboardAdmin />}
-          {activeTab === 'lista' && <ListaParticipantes data={listaPessoas} />}
+          {activeTab === 'lista' && <ListaParticipantes />}
           {activeTab === 'cadastro' && renderCadastroFuncionario()}
         </div>
         
