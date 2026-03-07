@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { User, Mail, MapPin, Target, CheckCircle, Car, Building2, Ticket, Camera, Leaf, ShieldCheck, ChevronRight } from 'lucide-react';
+import { User, Mail, MapPin, Target, CheckCircle, Car, Building2, Ticket, Camera, Leaf, ShieldCheck, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const CATEGORIAS = [
   { id: 'Visitante', icon: Ticket, description: 'Acesso às áreas comuns' },
@@ -17,6 +18,11 @@ const ESTADOS = [
 ];
 
 export default function CadastroParticipante() {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState(false);
+
   const [formData, setFormData] = useState({
     nome: '',
     categoria: '',
@@ -50,10 +56,56 @@ export default function CadastroParticipante() {
     setFormData(prev => ({ ...prev, categoria }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Dados do Cadastro:', formData);
-    alert('Cadastro realizado com sucesso!');
+    setErro('');
+    setIsLoading(true);
+
+    try {
+      const payload = {
+        tipo_categoria: formData.categoria,
+        nome_completo: formData.nome,
+        cpf: formData.cpf,
+        rg: formData.rg,
+        celular: formData.celular,
+        email: formData.email,
+        municipio: formData.municipio,
+        uf: formData.uf,
+        tipo_veiculo: formData.tipoVeiculo,
+        tipo_combustivel: formData.tipoCombustivel,
+        aceitou_lgpd: formData.aceiteLgpd,
+        cnpj: formData.cnpj || null,
+        site_empresa: formData.siteEmpresa || null,
+        nome_empresa: formData.nomeEmpresa || null,
+        ccir: formData.ccir || null,
+        nome_propriedade: formData.nomePropriedade || null
+      };
+
+      const response = await fetch('/api/v1/credenciado', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail?.[0]?.msg || errorData?.detail || 'Erro ao realizar cadastro.');
+      }
+
+      setSucesso(true);
+      // Redirect to home/login after a short delay so the user sees success
+      setTimeout(() => {
+         navigate('/');
+      }, 2000);
+
+    } catch (err: any) {
+      console.error('Erro no cadastro:', err);
+      setErro(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -309,15 +361,32 @@ export default function CadastroParticipante() {
                   </div>
                 </div>
 
+                {erro && (
+                  <div className="mt-6 flex items-center p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">
+                    <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+                    <span>{erro}</span>
+                  </div>
+                )}
+                
+                {sucesso && (
+                  <div className="mt-6 flex items-center p-4 bg-green-50 text-green-700 rounded-xl border border-green-200">
+                    <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+                    <span>Cadastro realizado com sucesso! Redirecionando...</span>
+                  </div>
+                )}
+
                 <div className="mt-8 flex justify-end">
                   <button 
                     type="submit"
-                    className="relative group overflow-hidden pl-6 pr-4 py-4 rounded-2xl bg-alta-green text-white font-bold flex items-center gap-3 shadow-[0_8px_20px_-6px_rgba(16,145,77,0.5)] hover:shadow-[0_12px_25px_-6px_rgba(16,145,77,0.6)] transform hover:-translate-y-1 transition-all duration-300"
+                    disabled={isLoading || sucesso || !formData.categoria || !formData.aceiteLgpd}
+                    className="relative group overflow-hidden pl-6 pr-4 py-4 rounded-2xl bg-alta-green text-white font-bold flex items-center gap-3 shadow-[0_8px_20px_-6px_rgba(16,145,77,0.5)] hover:shadow-[0_12px_25px_-6px_rgba(16,145,77,0.6)] transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
                   >
                     <span className="absolute w-0 h-0 transition-all duration-500 ease-out bg-white rounded-full group-hover:w-56 group-hover:h-56 opacity-10"></span>
-                    <span className="relative">Concluir Inscrição</span>
+                    <span className="relative">
+                      {isLoading ? 'Enviando...' : 'Concluir Inscrição'}
+                    </span>
                     <div className="relative bg-white/20 rounded-xl p-1.5 transition-transform duration-300 group-hover:translate-x-1">
-                      <ChevronRight className="w-5 h-5" />
+                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ChevronRight className="w-5 h-5" />}
                     </div>
                   </button>
                 </div>

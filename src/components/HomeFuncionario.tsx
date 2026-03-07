@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { QrCode, KeyRound, Search, UserCheck, ShieldCheck, LogOut } from 'lucide-react';
+import { QrCode, KeyRound, Search, ShieldCheck, LogOut, Loader2, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '../lib/api';
 
 export default function HomeFuncionario() {
   const navigate = useNavigate();
   const [token, setToken] = useState('');
   const [cpfBusca, setCpfBusca] = useState('');
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
+
+  const [loadingBusca, setLoadingBusca] = useState(false);
+  const [participanteSelecionado, setParticipanteSelecionado] = useState<any>(null);
 
   const handleSimulateScan = () => {
     setScanStatus('scanning');
@@ -16,12 +20,40 @@ export default function HomeFuncionario() {
     }, 1500);
   };
 
-  const handleLiberarManual = (tipo: 'token' | 'cpf') => {
-    const term = tipo === 'token' ? token : cpfBusca;
-    if (term) {
-      alert(`Acesso liberado para o ${tipo.toUpperCase()}: ${term}`);
-      if (tipo === 'token') setToken('');
-      if (tipo === 'cpf') setCpfBusca('');
+  const handleLiberarManual = () => {
+    if (token) {
+      alert(`Acesso liberado para o TOKEN: ${token}`);
+      setToken('');
+    }
+  };
+
+  const handlePesquisaCPF = async () => {
+    if (!cpfBusca) return;
+    setLoadingBusca(true);
+    setParticipanteSelecionado(null);
+    try {
+      const response = await fetchWithAuth('/api/v1/credenciado');
+      if (!response.ok) throw new Error('Falha ao buscar usuários');
+      const data = await response.json();
+      
+      const credenciados = data.credenciados || [];
+      const cpfNumeros = cpfBusca.replace(/\D/g, '');
+      
+      const found = credenciados.find((c: any) => {
+         const dbCpf = (c.cpf || '').replace(/\D/g, '');
+         return dbCpf === cpfNumeros;
+      });
+
+      if (found) {
+        setParticipanteSelecionado(found);
+      } else {
+        alert('Participante não encontrado com este CPF.');
+      }
+    } catch(e) {
+      console.error(e);
+      alert('Erro na pesquisa do CPF');
+    } finally {
+      setLoadingBusca(false);
     }
   };
 
@@ -89,7 +121,7 @@ export default function HomeFuncionario() {
                   className="glass-input flex-1 px-4 py-3 rounded-xl text-lg font-mono tracking-widest uppercase placeholder-gray-400"
                 />
                 <button 
-                  onClick={() => handleLiberarManual('token')}
+                  onClick={() => handleLiberarManual()}
                   className="bg-alta-pink hover:bg-alta-pink/90 text-white px-6 py-3 rounded-xl font-semibold shadow-md shadow-alta-pink/30 transition-all hover:scale-105 active:scale-95"
                 >
                    Validar
@@ -107,23 +139,45 @@ export default function HomeFuncionario() {
               </div>
               <p className="text-sm text-gray-500 mb-4">Busque o participante na base de dados caso não possua o dispositivo celular.</p>
               
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type="text" 
-                    value={cpfBusca}
-                    onChange={(e) => setCpfBusca(e.target.value)}
-                    placeholder="000.000.000-00"
-                    className="glass-input w-full pl-10 pr-4 py-3 rounded-xl text-base"
-                  />
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                      type="text" 
+                      value={cpfBusca}
+                      onChange={(e) => setCpfBusca(e.target.value)}
+                      placeholder="000.000.000-00"
+                      className="glass-input w-full pl-10 pr-4 py-3 rounded-xl text-base"
+                      onKeyDown={(e) => e.key === 'Enter' && handlePesquisaCPF()}
+                    />
+                  </div>
+                  <button 
+                    onClick={handlePesquisaCPF}
+                    disabled={loadingBusca}
+                    className="bg-alta-green hover:bg-alta-green/90 text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-md shadow-alta-green/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap disabled:opacity-75 disabled:hover:scale-100"
+                  >
+                    {loadingBusca ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />} 
+                    <span className="hidden sm:inline">Pesquisar</span>
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleLiberarManual('cpf')}
-                  className="bg-alta-green hover:bg-alta-green/90 text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-md shadow-alta-green/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
-                >
-                   <UserCheck className="w-5 h-5" /> <span className="hidden sm:inline">Liberar Acesso</span>
-                </button>
+
+                {participanteSelecionado && (
+                  <div className="mt-4 p-4 bg-alta-green/5 border border-alta-green/20 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="flex justify-between items-center">
+                       <div>
+                          <p className="font-bold text-gray-800">{participanteSelecionado.nome_completo}</p>
+                          <p className="text-sm text-gray-500">Categoria: {participanteSelecionado.tipo_categoria}</p>
+                       </div>
+                       <button
+                         onClick={() => navigate('/funcionario/credencial', { state: { participante: participanteSelecionado } })}
+                         className="flex items-center gap-2 bg-alta-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-alta-green/90 transition-colors shadow-sm"
+                       >
+                         <Printer className="w-4 h-4" /> Gerar Credencial
+                       </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

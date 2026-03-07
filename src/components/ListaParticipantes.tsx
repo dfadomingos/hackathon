@@ -12,17 +12,45 @@ export default function ListaParticipantes() {
   useEffect(() => {
     const carregarUsuarios = async () => {
       try {
-        const response = await fetchWithAuth('/api/v1/user/colaboradores');
-        if (!response.ok) {
-          throw new Error('Falha ao obter dados da API.');
+        const [resColab, resCred] = await Promise.all([
+          fetchWithAuth('/api/v1/user/colaboradores'),
+          fetchWithAuth('/api/v1/credenciado')
+        ]);
+
+        if (!resColab.ok || !resCred.ok) {
+          throw new Error('Falha ao obter dados das APIs.');
         }
-        const data = await response.json();
+
+        const dataColab = await resColab.json();
+        const dataCred = await resCred.json();
         
-        // Filter out hugomendes@gmail.com (admin) and ensure array format
-        const usuariosArray = data.colaboradores || data.items || data.users || (Array.isArray(data) ? data : []);
-        const listaFiltrada = usuariosArray.filter((u: any) => u.login !== 'hugomendes@gmail.com');
+        // Formatar Colaboradores
+        const colabArray = dataColab.colaboradores || dataColab.items || dataColab.users || (Array.isArray(dataColab) ? dataColab : []);
+        const formatadosColab = colabArray
+          .filter((u: any) => u.login !== 'hugomendes@gmail.com')
+          .map((u: any) => ({
+            id: u.id || u.cpf || u.login,
+            nome: u.nome,
+            login: u.login,
+            tipo: u.tipo || "Não definido",
+            funcao: u.funcao,
+            empresa: u.empresa || u.nome_empresa,
+            cpf: u.cpf
+          }));
+
+        // Formatar Credenciados
+        const credArray = dataCred.credenciados || dataCred.items || dataCred.users || (Array.isArray(dataCred) ? dataCred : []);
+        const formatadosCred = credArray.map((p: any) => ({
+          id: p.id || p.cpf || p.email,
+          nome: p.nome_completo,
+          login: p.email, // using email as sub-label
+          tipo: p.tipo_categoria,
+          funcao: "Inscrito",
+          empresa: p.nome_empresa,
+          cpf: p.cpf
+        }));
         
-        setUsuarios(listaFiltrada);
+        setUsuarios([...formatadosColab, ...formatadosCred]);
       } catch (err: any) {
         console.error('Erro ao carregar usuários:', err);
         setErro(err.message || 'Não foi possível carregar a lista de participantes.');
@@ -107,7 +135,7 @@ export default function ListaParticipantes() {
                 </tr>
               ) : participantesFiltrados.length > 0 ? (
                  participantesFiltrados.map((p) => (
-                  <tr key={p.cpf || p.login} className="hover:bg-alta-green/5 transition-colors group">
+                  <tr key={p.id || p.cpf || p.login || Math.random()} className="hover:bg-alta-green/5 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-gray-900">{p.nome}</div>
                       <div className="text-sm text-gray-500">{p.login}</div>

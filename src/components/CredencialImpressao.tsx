@@ -1,10 +1,13 @@
-import { useNavigate } from 'react-router-dom';
-import { Printer, ChevronLeft } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Printer, ChevronLeft, AlertCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import headerBg from '../assets/header.jpg';
 import bottomBg from '../assets/img1.jpg';
 
 export default function CredencialImpressao() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const participante = location.state?.participante;
 
   const handlePrint = () => {
     window.print();
@@ -40,14 +43,56 @@ export default function CredencialImpressao() {
                <img src={headerBg} alt="Header" className="w-full h-auto object-contain block" />
             </div>
 
-            {/* Espaço em branco para ser editado depois */}
-            <div className="flex-1 w-full bg-white relative p-4 flex flex-col items-center justify-center">
-               {/* 
-                 TODO: Aqui entrará o QR Code, Nome e Token (Conteúdo Dinâmico)
-               */}
-               <div className="w-full h-full border-2 border-gray-200 border-dashed rounded-xl flex items-center justify-center text-gray-400">
-                  Área Dinâmica (QR Code, Nome, Token, Tipo)
-               </div>
+            {/* Área Dinâmica via Estado do Router */}
+            <div className="flex-1 w-full bg-white relative p-4 flex items-center justify-center">
+               {!participante ? (
+                 <div className="text-gray-400 flex flex-col items-center justify-center gap-2 print:hidden w-full">
+                    <AlertCircle className="w-8 h-8 opacity-50" />
+                    <p>Nenhum participante recebido. Acesse através da pesquisa.</p>
+                 </div>
+               ) : (
+                 <>
+                   {/* Lado Esquerdo */}
+                   <div className="flex flex-col items-center justify-center w-1/2 text-center border-r-2 border-dashed border-gray-200 pr-6">
+                      <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 mb-4">
+                        <QRCodeSVG 
+                          value={participante.token_qr_code || 'QR_ERROR'} 
+                          size={150} 
+                          level="H" 
+                        />
+                      </div>
+                      <h2 className="text-2xl font-extrabold text-gray-900 uppercase tracking-tight leading-tight line-clamp-2">
+                         {participante.nome_completo || 'Nome não informado'}
+                      </h2>
+                      <p className="text-base text-gray-500 mt-2 font-mono tracking-[0.2em] bg-gray-50 px-4 py-1 rounded-lg">
+                         {participante.token_qr_code || 'TKN-0000'}
+                      </p>
+                      <div className="mt-4 px-6 py-2 bg-alta-green/10 text-alta-green font-bold uppercase tracking-wider rounded-full border border-alta-green/20 shadow-sm text-sm">
+                         {participante.tipo_categoria || 'Visitante'}
+                      </div>
+                   </div>
+
+                   {/* Lado Direito */}
+                   <div className="flex flex-col items-center justify-center w-1/2 text-center pl-6">
+                      <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 mb-4">
+                        <QRCodeSVG 
+                          value={participante.token_qr_code || 'QR_ERROR'} 
+                          size={150} 
+                          level="H" 
+                        />
+                      </div>
+                      <h2 className="text-2xl font-extrabold text-gray-900 uppercase tracking-tight leading-tight line-clamp-2">
+                         {participante.nome_completo || 'Nome não informado'}
+                      </h2>
+                      <p className="text-base text-gray-500 mt-2 font-mono tracking-[0.2em] bg-gray-50 px-4 py-1 rounded-lg">
+                         {participante.token_qr_code || 'TKN-0000'}
+                      </p>
+                      <div className="mt-4 px-6 py-2 bg-alta-green/10 text-alta-green font-bold uppercase tracking-wider rounded-full border border-alta-green/20 shadow-sm text-sm">
+                         {participante.tipo_categoria || 'Visitante'}
+                      </div>
+                   </div>
+                 </>
+               )}
             </div>
 
          </div>
