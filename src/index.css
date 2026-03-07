@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Raleway", sans-serif;
+  --color-alta-green: #10914D;
+  --color-alta-gray: #A9A095;
+  --color-alta-pink: #CC3366;
+  --color-alta-orange: #FF9D00;
+}
+
+body {
+  @apply antialiased text-gray-800 bg-gray-50;
+  font-family: 'Raleway', sans-serif;
+}
+
+@utility glass-effect {
+  @apply bg-white/70 backdrop-blur-lg border border-white/40 shadow-[0_8px_32px_0_rgba(16,145,77,0.07)];
+}
+
+@utility glass-input {
+  @apply bg-white/50 border border-gray-200/60 backdrop-blur-sm focus:bg-white focus:border-alta-green focus:ring-2 focus:ring-alta-green/30 focus:outline-none transition-all duration-300;
+}
