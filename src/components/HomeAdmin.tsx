@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Building, Briefcase, Mail, Lock, ShieldCheck, CreditCard, ChevronRight, LogOut, CheckCircle, Map, LayoutDashboard, Users } from 'lucide-react';
+import { UserPlus, Building, Briefcase, Mail, Lock, ShieldCheck, CreditCard, ChevronRight, LogOut, CheckCircle, LayoutDashboard, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardAdmin from './DashboardAdmin';
 import ListaParticipantes from './ListaParticipantes';
@@ -28,7 +28,7 @@ export default function HomeAdmin() {
   const [isLoading, setIsLoading] = useState(false);
   
   // Participant List State (simulating a DB)
-  const [listaPessoas, setListaPessoas] = useState<any[]>(INITIAL_MOCK_PARTICIPANTES);
+  const [, setListaPessoas] = useState<any[]>(INITIAL_MOCK_PARTICIPANTES);
 
   const [formData, setFormData] = useState({
     nome: '',
