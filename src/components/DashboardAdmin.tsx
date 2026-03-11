@@ -21,7 +21,7 @@ export default function DashboardAdmin() {
       try {
         const [resColab, resCred] = await Promise.all([
           fetchWithAuth('/api/v1/user/colaboradores'),
-          fetchWithAuth('/api/v1/credenciado')
+          fetchWithAuth('/api/v1/credenciados')
         ]);
 
         if (!resColab.ok || !resCred.ok) throw new Error('Failed to fetch stats');

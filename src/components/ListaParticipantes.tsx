@@ -14,7 +14,7 @@ export default function ListaParticipantes() {
       try {
         const [resColab, resCred] = await Promise.all([
           fetchWithAuth('/api/v1/user/colaboradores'),
-          fetchWithAuth('/api/v1/credenciado')
+          fetchWithAuth('/api/v1/credenciados')
         ]);
 
         if (!resColab.ok || !resCred.ok) {

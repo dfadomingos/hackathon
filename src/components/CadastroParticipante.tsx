@@ -81,7 +81,7 @@ export default function CadastroParticipante() {
         nome_propriedade: formData.nomePropriedade || null
       };
 
-      const response = await fetch('/api/v1/credenciado', {
+      const response = await fetch('/api/v1/credenciados', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
