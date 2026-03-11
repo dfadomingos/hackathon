@@ -32,7 +32,7 @@ export default function HomeFuncionario() {
     setLoadingBusca(true);
     setParticipanteSelecionado(null);
     try {
-      const response = await fetchWithAuth('/api/v1/credenciado');
+      const response = await fetchWithAuth('/api/v1/credenciados');
       if (!response.ok) throw new Error('Falha ao buscar usuários');
       const data = await response.json();
       
